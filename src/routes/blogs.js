@@ -8,8 +8,8 @@ router.get('/', async (req, res) => {
   try {
     const includeContent = String(req.query.includeContent || '').toLowerCase() === 'true';
     const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const pageSizeRaw = parseInt(req.query.pageSize || '20', 10);
-    const pageSize = Math.min(Math.max(pageSizeRaw || 20, 1), 200); // cap pageSize to 200
+    const pageSizeRaw = parseInt(req.query.pageSize || '9', 10);
+    const pageSize = Math.min(Math.max(pageSizeRaw || 9, 1), 200); // cap pageSize to 200
     const offset = (page - 1) * pageSize;
 
     const select = includeContent
@@ -64,6 +64,40 @@ router.get('/slug/:slug', async (req, res) => {
       return res.status(404).json({ error: 'Blog not found' });
     }
     res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/blogs/:id/sections - list sections for a blog
+router.get('/:id/sections', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid blog id' });
+  }
+  try {
+    const { rows } = await db.query(
+      'SELECT id, blog_id, section, content, cta FROM blog_sections WHERE blog_id = $1 ORDER BY id ASC',
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/blogs/:id/faqs - list FAQs for a blog
+router.get('/:id/faqs', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid blog id' });
+  }
+  try {
+    const { rows } = await db.query(
+      'SELECT id, blog_id, question, answer FROM blog_faqs WHERE blog_id = $1 ORDER BY id ASC',
+      [id]
+    );
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
