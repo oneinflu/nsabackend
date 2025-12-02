@@ -46,4 +46,10 @@ router.put('/:id/sections/:sectionId', controller.updateSection);
 
 router.put('/:id/faqs/:faqId', controller.updateFaq);
 
+router.delete('/:id', controller.deleteBlog);
+
+router.delete('/:id/sections/:sectionId', controller.deleteSection);
+
+router.delete('/:id/faqs/:faqId', controller.deleteFaq);
+
 module.exports = router;

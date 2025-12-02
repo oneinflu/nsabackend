@@ -2,6 +2,7 @@ const { v2: cloudinary } = require('cloudinary');
 const blog = require('../models/blog');
 const sections = require('../models/blogSections');
 const faqs = require('../models/blogFaqs');
+const db = require('../db');
 
 if (process.env.CLOUDINARY_URL) {
   cloudinary.config({ secure: true });
@@ -313,6 +314,58 @@ exports.updateFaq = async (req, res) => {
     const row = await faqs.update(id, faqId, sets, values);
     if (!row) return res.status(404).json({ error: 'FAQ not found' });
     res.json(row);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deleteBlog = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid blog id' });
+  let client;
+  try {
+    client = await db.getClient();
+    await client.query('BEGIN');
+    await client.query('DELETE FROM blog_sections WHERE blog_id=$1', [id]);
+    await client.query('DELETE FROM blog_faqs WHERE blog_id=$1', [id]);
+    const del = await client.query('DELETE FROM blog WHERE id=$1 RETURNING id', [id]);
+    if (del.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Blog not found' });
+    }
+    await client.query('COMMIT');
+    res.status(204).send();
+  } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (client) client.release();
+  }
+};
+
+exports.deleteSection = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const sectionId = parseInt(req.params.sectionId, 10);
+  if (Number.isNaN(id) || Number.isNaN(sectionId)) return res.status(400).json({ error: 'Invalid blog or section id' });
+  try {
+    const del = await db.query('DELETE FROM blog_sections WHERE blog_id=$1 AND id=$2 RETURNING id', [id, sectionId]);
+    if (del.rowCount === 0) return res.status(404).json({ error: 'Section not found' });
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deleteFaq = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const faqId = parseInt(req.params.faqId, 10);
+  if (Number.isNaN(id) || Number.isNaN(faqId)) return res.status(400).json({ error: 'Invalid blog or faq id' });
+  try {
+    const del = await db.query('DELETE FROM blog_faqs WHERE blog_id=$1 AND id=$2 RETURNING id', [id, faqId]);
+    if (del.rowCount === 0) return res.status(404).json({ error: 'FAQ not found' });
+    res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
