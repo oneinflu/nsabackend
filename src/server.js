@@ -13,6 +13,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
 // Health route with DB check
@@ -29,6 +30,14 @@ app.get('/health', async (req, res) => {
 app.use('/api', routes);
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+(async () => {
+  try {
+    const result = await db.query('SELECT 1 as ok');
+    console.log(`DB connection: ${result.rows[0].ok === 1 ? 'connected' : 'unknown'}`);
+  } catch (err) {
+    console.error(`DB connection error: ${err.message}`);
+  }
+  app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+})();
